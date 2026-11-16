@@ -4,8 +4,45 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>My Chess App</title>
+  <style>
+    body { font-family: sans-serif; background: #1b1b1b; color: #eee; padding: 16px; }
+    input, button { font-size: 16px; padding: 10px; margin: 4px 0; }
+    .game { background: #2b2b2b; padding: 10px; margin: 8px 0; border-radius: 8px; }
+  </style>
 </head>
 <body>
-  <h1>Hello, my chess app is alive!</h1>
+  <h2>My Chess App</h2>
+  <input id="user" placeholder="chess.com username">
+  <button onclick="loadGames()">Load games</button>
+  <div id="status"></div>
+  <div id="games"></div>
+
+  <script>
+    async function loadGames() {
+      const user = document.getElementById("user").value.trim().toLowerCase();
+      const status = document.getElementById("status");
+      const box = document.getElementById("games");
+      box.innerHTML = "";
+      status.textContent = "Loading...";
+      try {
+        const res = await fetch("https://api.chess.com/pub/player/" + user + "/games/archives");
+        if (!res.ok) { status.textContent = "User not found."; return; }
+        const archives = (await res.json()).archives;
+        if (!archives.length) { status.textContent = "No games found."; return; }
+        const last = archives[archives.length - 1];
+        const data = await (await fetch(last)).json();
+        status.textContent = data.games.length + " games this month";
+        data.games.reverse().forEach(g => {
+          const div = document.createElement("div");
+          div.className = "game";
+          div.textContent = g.white.username + " (" + g.white.result + ") vs " +
+                            g.black.username + " (" + g.black.result + ")";
+          box.appendChild(div);
+        });
+      } catch (e) {
+        status.textContent = "Something went wrong: " + e.message;
+      }
+    }
+  </script>
 </body>
 </html>
