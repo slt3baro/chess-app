@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html>
+<body style="font-family:sans-serif;font-size:18px;padding:16px">
+<p id="a">JavaScript: NOT running</p>
+<p id="b">Chess library: checking...</p>
+<script>document.getElementById("a").textContent = "JavaScript: running";</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+<script>
+document.getElementById("b").textContent = window.Chess ? "Chess library: loaded" : "Chess library: FAILED to load";
+</script>
+</body>
+</html>
