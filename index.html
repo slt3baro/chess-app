@@ -6,26 +6,77 @@
 <title>My Chess App</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
 <style>
-  body{font-family:sans-serif;background:#1b1b1b;color:#eee;margin:0;padding:12px;}
-  #board{display:grid;grid-template-columns:repeat(8,1fr);width:min(96vw,480px);aspect-ratio:1;margin:12px auto;}
-  .sq{display:flex;align-items:center;justify-content:center;font-size:min(9vw,44px);cursor:pointer;user-select:none;}
-  .light{background:var(--light);}
-  .dark{background:var(--dark);}
-  .sel{outline:3px solid #f6e05e;outline-offset:-3px;}
-  .dot{box-shadow:inset 0 0 0 100px rgba(20,200,80,.4);}
-  #bar{text-align:center;}
-  select,button{font-size:16px;padding:8px;margin:4px;}
+:root{--bg:#121316;--card:#1c1e23;--accent:#4ade80;--text:#e8e8ea;--muted:#8b8d94;--light:#eeeed2;--dark:#769656;}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;padding-bottom:80px;}
+header{padding:14px 16px;font-size:20px;font-weight:700;}
+header span{color:var(--accent);}
+.tab{display:none;padding:0 12px;}
+.tab.active{display:block;}
+.card{background:var(--card);border-radius:14px;padding:14px;margin:12px 0;}
+.muted{color:var(--muted);}
+#board{display:grid;grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(8,1fr);
+  width:min(94vw,480px);height:min(94vw,480px);margin:8px auto;border-radius:8px;overflow:hidden;}
+.sq{display:flex;align-items:center;justify-content:center;font-size:min(9vw,44px);line-height:1;
+  user-select:none;min-width:0;min-height:0;position:relative;}
+.light{background:var(--light);}
+.dark{background:var(--dark);}
+.last::after{content:"";position:absolute;inset:0;background:rgba(255,220,0,.35);}
+.sel::after{content:"";position:absolute;inset:0;background:rgba(80,160,255,.5);}
+.dot::before{content:"";position:absolute;width:30%;height:30%;border-radius:50%;background:rgba(0,0,0,.25);}
+.piece{position:relative;z-index:2;}
+#status{text-align:center;font-weight:600;margin:6px 0;}
+.row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;}
+button{background:#2a2d34;color:var(--text);border:0;border-radius:10px;padding:11px 16px;font-size:15px;}
+button:active{background:#363a43;}
+button.primary{background:var(--accent);color:#06210f;font-weight:700;}
+#moves{font-family:monospace;line-height:1.7;}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:#17181c;border-top:1px solid #2a2d34;}
+nav button{flex:1;background:none;border-radius:0;padding:12px 0 14px;color:var(--muted);font-size:12px;}
+nav button .ic{display:block;font-size:20px;margin-bottom:2px;}
+nav button.active{color:var(--accent);}
+.swatch{display:inline-block;width:64px;height:64px;border-radius:10px;overflow:hidden;margin:6px;border:3px solid transparent;}
+.swatch.on{border-color:var(--accent);}
+.swatch div{width:100%;height:50%;}
 </style>
 </head>
 <body>
-<div id="bar">
-  <select id="theme" onchange="setTheme(this.value)"></select>
-  <button onclick="game.undo();selected=null;draw()">Undo</button>
-  <button onclick="flipped=!flipped;draw()">Flip</button>
-  <button onclick="game.reset();selected=null;draw()">Reset</button>
+<header>♞ My <span>Chess</span> App</header>
+
+<div id="play" class="tab active">
+  <div id="board"></div>
+  <div id="status"></div>
+  <div class="row">
+    <button onclick="undo()">Undo</button>
+    <button onclick="flipped=!flipped;draw()">Flip</button>
+    <button class="primary" onclick="newGame()">New game</button>
+  </div>
+  <div class="card"><b>Moves</b><div id="moves" class="muted">No moves yet</div></div>
 </div>
-<div id="board"></div>
-<div id="bar"><span id="status"></span></div>
+
+<div id="analyze" class="tab">
+  <div class="card"><b>Analyze</b><p class="muted">Coming soon: Stockfish analysis of your games, with an evaluation bar and best moves.</p></div>
+</div>
+
+<div id="stats" class="tab">
+  <div class="card"><b>Stats</b><p class="muted">Coming soon: openings you lose with, and whether you lose in the opening, middlegame or endgame.</p></div>
+</div>
+
+<div id="train" class="tab">
+  <div class="card"><b>Blunder training</b><p class="muted">Coming soon: replay your own blunders and find the best move.</p></div>
+</div>
+
+<div id="settings" class="tab">
+  <div class="card"><b>Board theme</b><div id="themes"></div></div>
+</div>
+
+<nav>
+  <button class="active" onclick="showTab('play',this)"><span class="ic">♟</span>Play</button>
+  <button onclick="showTab('analyze',this)"><span class="ic">📊</span>Analyze</button>
+  <button onclick="showTab('stats',this)"><span class="ic">📈</span>Stats</button>
+  <button onclick="showTab('train',this)"><span class="ic">🎯</span>Train</button>
+  <button onclick="showTab('settings',this)"><span class="ic">⚙️</span>Settings</button>
+</nav>
 
 <script>
 const game = new Chess();
@@ -34,20 +85,44 @@ const themes = {
   Green:["#eeeed2","#769656"],
   Brown:["#f0d9b5","#b58863"],
   Blue:["#dee3e6","#8ca2ad"],
+  Purple:["#e8e0f0","#8877b3"],
   Dark:["#9a9a9a","#4a4a4a"]
 };
 let selected = null, flipped = false;
+
+function showTab(id, btn){
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+  document.querySelectorAll("nav button").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+}
 
 function setTheme(name){
   const t = themes[name];
   document.documentElement.style.setProperty("--light", t[0]);
   document.documentElement.style.setProperty("--dark", t[1]);
+  try{ localStorage.setItem("theme", name); }catch(e){}
+  drawThemes(name);
+}
+
+function drawThemes(current){
+  const box = document.getElementById("themes");
+  box.innerHTML = "";
+  Object.keys(themes).forEach(n => {
+    const s = document.createElement("div");
+    s.className = "swatch" + (n===current ? " on" : "");
+    s.innerHTML = '<div style="background:'+themes[n][0]+'"></div><div style="background:'+themes[n][1]+'"></div>';
+    s.onclick = () => setTheme(n);
+    box.appendChild(s);
+  });
 }
 
 function draw(){
   const el = document.getElementById("board");
   el.innerHTML = "";
   const targets = selected ? game.moves({square:selected, verbose:true}).map(m => m.to) : [];
+  const hist = game.history({verbose:true});
+  const last = hist.length ? hist[hist.length-1] : null;
   for(let r=0;r<8;r++){
     for(let f=0;f<8;f++){
       const file = flipped ? 7-f : f;
@@ -55,38 +130,28 @@ function draw(){
       const name = "abcdefgh"[file] + rank;
       const p = game.get(name);
       const d = document.createElement("div");
-      d.className = "sq " + ((file+rank)%2===0 ? "light" : "dark");
+      d.className = "sq " + (((file+rank)%2===0) ? "dark" : "light");
+      if(last && (name===last.from || name===last.to)) d.classList.add("last");
       if(name===selected) d.classList.add("sel");
       if(targets.includes(name)) d.classList.add("dot");
       if(p){
-        d.textContent = glyph[p.type] + "\uFE0E";
-        d.style.color = p.color==="w" ? "#fff" : "#111";
-        d.style.textShadow = p.color==="w" ? "0 0 2px #000,0 0 2px #000" : "0 0 2px #fff";
+        const s = document.createElement("span");
+        s.className = "piece";
+        s.textContent = glyph[p.type] + "\uFE0E";
+        s.style.color = p.color==="w" ? "#fff" : "#111";
+        s.style.textShadow = p.color==="w" ? "0 0 2px #000,0 0 2px #000,0 0 3px #000" : "0 0 2px #fff";
+        d.appendChild(s);
       }
       d.onclick = () => clickSquare(name);
       el.appendChild(d);
     }
   }
   let s = (game.turn()==="w" ? "White" : "Black") + " to move";
-  if(game.in_checkmate()) s = "Checkmate!";
+  if(game.in_checkmate()) s = "Checkmate! " + (game.turn()==="w" ? "Black" : "White") + " wins";
   else if(game.in_draw()) s = "Draw";
+  else if(game.in_check()) s += " (check)";
   document.getElementById("status").textContent = s;
-}
 
-function clickSquare(name){
-  const p = game.get(name);
-  if(selected && selected !== name){
-    const m = game.move({from:selected, to:name, promotion:"q"});
-    if(m){ selected = null; draw(); return; }
-  }
-  selected = (p && p.color === game.turn()) ? name : null;
-  draw();
-}
-
-const sel = document.getElementById("theme");
-Object.keys(themes).forEach(n => { const o = document.createElement("option"); o.textContent = n; sel.appendChild(o); });
-setTheme("Green");
-draw();
-</script>
-</body>
-</html>
+  const h = game.history();
+  let txt = "";
+  for(let i=0;i
