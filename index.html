@@ -1,48 +1,92 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>My Chess App</title>
-  <style>
-    body { font-family: sans-serif; background: #1b1b1b; color: #eee; padding: 16px; }
-    input, button { font-size: 16px; padding: 10px; margin: 4px 0; }
-    .game { background: #2b2b2b; padding: 10px; margin: 8px 0; border-radius: 8px; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>My Chess App</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+<style>
+  body{font-family:sans-serif;background:#1b1b1b;color:#eee;margin:0;padding:12px;}
+  #board{display:grid;grid-template-columns:repeat(8,1fr);width:min(96vw,480px);aspect-ratio:1;margin:12px auto;}
+  .sq{display:flex;align-items:center;justify-content:center;font-size:min(9vw,44px);cursor:pointer;user-select:none;}
+  .light{background:var(--light);}
+  .dark{background:var(--dark);}
+  .sel{outline:3px solid #f6e05e;outline-offset:-3px;}
+  .dot{box-shadow:inset 0 0 0 100px rgba(20,200,80,.4);}
+  #bar{text-align:center;}
+  select,button{font-size:16px;padding:8px;margin:4px;}
+</style>
 </head>
 <body>
-  <h2>My Chess App</h2>
-  <input id="user" placeholder="chess.com username">
-  <button onclick="loadGames()">Load games</button>
-  <div id="status"></div>
-  <div id="games"></div>
+<div id="bar">
+  <select id="theme" onchange="setTheme(this.value)"></select>
+  <button onclick="game.undo();selected=null;draw()">Undo</button>
+  <button onclick="flipped=!flipped;draw()">Flip</button>
+  <button onclick="game.reset();selected=null;draw()">Reset</button>
+</div>
+<div id="board"></div>
+<div id="bar"><span id="status"></span></div>
 
-  <script>
-    async function loadGames() {
-      const user = document.getElementById("user").value.trim().toLowerCase();
-      const status = document.getElementById("status");
-      const box = document.getElementById("games");
-      box.innerHTML = "";
-      status.textContent = "Loading...";
-      try {
-        const res = await fetch("https://api.chess.com/pub/player/" + user + "/games/archives");
-        if (!res.ok) { status.textContent = "User not found."; return; }
-        const archives = (await res.json()).archives;
-        if (!archives.length) { status.textContent = "No games found."; return; }
-        const last = archives[archives.length - 1];
-        const data = await (await fetch(last)).json();
-        status.textContent = data.games.length + " games this month";
-        data.games.reverse().forEach(g => {
-          const div = document.createElement("div");
-          div.className = "game";
-          div.textContent = g.white.username + " (" + g.white.result + ") vs " +
-                            g.black.username + " (" + g.black.result + ")";
-          box.appendChild(div);
-        });
-      } catch (e) {
-        status.textContent = "Something went wrong: " + e.message;
+<script>
+const game = new Chess();
+const glyph = {k:"♚",q:"♛",r:"♜",b:"♝",n:"♞",p:"♟"};
+const themes = {
+  Green:["#eeeed2","#769656"],
+  Brown:["#f0d9b5","#b58863"],
+  Blue:["#dee3e6","#8ca2ad"],
+  Dark:["#9a9a9a","#4a4a4a"]
+};
+let selected = null, flipped = false;
+
+function setTheme(name){
+  const t = themes[name];
+  document.documentElement.style.setProperty("--light", t[0]);
+  document.documentElement.style.setProperty("--dark", t[1]);
+}
+
+function draw(){
+  const el = document.getElementById("board");
+  el.innerHTML = "";
+  const targets = selected ? game.moves({square:selected, verbose:true}).map(m => m.to) : [];
+  for(let r=0;r<8;r++){
+    for(let f=0;f<8;f++){
+      const file = flipped ? 7-f : f;
+      const rank = flipped ? r+1 : 8-r;
+      const name = "abcdefgh"[file] + rank;
+      const p = game.get(name);
+      const d = document.createElement("div");
+      d.className = "sq " + ((file+rank)%2===0 ? "light" : "dark");
+      if(name===selected) d.classList.add("sel");
+      if(targets.includes(name)) d.classList.add("dot");
+      if(p){
+        d.textContent = glyph[p.type] + "\uFE0E";
+        d.style.color = p.color==="w" ? "#fff" : "#111";
+        d.style.textShadow = p.color==="w" ? "0 0 2px #000,0 0 2px #000" : "0 0 2px #fff";
       }
+      d.onclick = () => clickSquare(name);
+      el.appendChild(d);
     }
-  </script>
+  }
+  let s = (game.turn()==="w" ? "White" : "Black") + " to move";
+  if(game.in_checkmate()) s = "Checkmate!";
+  else if(game.in_draw()) s = "Draw";
+  document.getElementById("status").textContent = s;
+}
+
+function clickSquare(name){
+  const p = game.get(name);
+  if(selected && selected !== name){
+    const m = game.move({from:selected, to:name, promotion:"q"});
+    if(m){ selected = null; draw(); return; }
+  }
+  selected = (p && p.color === game.turn()) ? name : null;
+  draw();
+}
+
+const sel = document.getElementById("theme");
+Object.keys(themes).forEach(n => { const o = document.createElement("option"); o.textContent = n; sel.appendChild(o); });
+setTheme("Green");
+draw();
+</script>
 </body>
 </html>
