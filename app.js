@@ -1,15 +1,23 @@
 const game = new Chess();
-const glyph = {k:"♚",q:"♛",r:"♜",b:"♝",n:"♞",p:"♟"};
 const themes = {
   Green:["#eeeed2","#769656"],
   Brown:["#f0d9b5","#b58863"],
   Blue:["#dee3e6","#8ca2ad"],
   Purple:["#e8e0f0","#8877b3"],
+  Coral:["#f4e1d2","#c97b63"],
   Dark:["#9a9a9a","#4a4a4a"]
 };
+const sets = ["cburnett","merida","alpha","staunty","cardinal","tatiana","pixel"];
+const BASE = "https://cdn.jsdelivr.net/gh/lichess-org/lila@master/public/piece/";
 const N = [0,1,2,3,4,5,6,7];
-let selected = null;
-let flipped = false;
+let selected = null, flipped = false, arrows = [];
+let pieceSet = "cburnett";
+try { pieceSet = localStorage.getItem("pieces") || pieceSet; } catch (e) {}
+if (!sets.includes(pieceSet)) pieceSet = "cburnett";
+
+function pieceUrl(set, color, type) {
+  return BASE + set + "/" + color + type.toUpperCase() + ".svg";
+}
 
 function showTab(id, btn) {
   document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
@@ -42,6 +50,27 @@ function drawThemes(current) {
   });
 }
 
+function setPieces(name) {
+  pieceSet = name;
+  try { localStorage.setItem("pieces", name); } catch (e) {}
+  drawPieceSets();
+  draw();
+}
+
+function drawPieceSets() {
+  const box = document.getElementById("pieces");
+  box.textContent = "";
+  sets.forEach(n => {
+    const d = document.createElement("div");
+    d.className = "pset" + (n === pieceSet ? " on" : "");
+    const img = document.createElement("img");
+    img.src = pieceUrl(n, "w", "n");
+    d.appendChild(img);
+    d.onclick = () => setPieces(n);
+    box.appendChild(d);
+  });
+}
+
 function draw() {
   const el = document.getElementById("board");
   el.textContent = "";
@@ -60,15 +89,24 @@ function draw() {
       if (last && (name === last.from || name === last.to)) d.classList.add("last");
       if (name === selected) d.classList.add("sel");
       if (targets.includes(name)) d.classList.add("dot");
-      if (p) {
-        const s = document.createElement("span");
-        s.className = "piece";
-        s.textContent = glyph[p.type] + "\uFE0E";
-        s.style.color = p.color === "w" ? "#fff" : "#111";
-        s.style.textShadow = p.color === "w" ? "0 0 2px #000,0 0 2px #000,0 0 3px #000" : "0 0 2px #fff";
-        d.appendChild(s);
+      if (f === 0) {
+        const c = document.createElement("i");
+        c.className = "co r";
+        c.textContent = rank;
+        d.appendChild(c);
       }
-      d.onclick = () => clickSquare(name);
+      if (r === 7) {
+        const c = document.createElement("i");
+        c.className = "co f";
+        c.textContent = "abcdefgh"[file];
+        d.appendChild(c);
+      }
+      if (p) {
+        const img = document.createElement("img");
+        img.className = "piece";
+        img.src = pieceUrl(pieceSet, p.color, p.type);
+        d.appendChild(img);
+      }
       el.appendChild(d);
     });
   });
@@ -85,9 +123,11 @@ function draw() {
     else txt += mv + "  ";
   });
   document.getElementById("moves").textContent = txt || "No moves yet";
+  if (window.renderArrows) renderArrows();
 }
 
 function clickSquare(name) {
+  arrows = [];
   const p = game.get(name);
   if (selected && selected !== name) {
     const m = game.move({from: selected, to: name, promotion: "q"});
@@ -97,12 +137,27 @@ function clickSquare(name) {
   draw();
 }
 
-function undo() { game.undo(); selected = null; draw(); }
+function undo() { game.undo(); selected = null; arrows = []; draw(); }
 function flipBoard() { flipped = !flipped; draw(); }
-function newGame() { game.reset(); selected = null; draw(); }
+function newGame() { game.reset(); selected = null; arrows = []; draw(); }
+
+const pc = document.createElement("div");
+pc.className = "card";
+const pt = document.createElement("b");
+pt.textContent = "Piece set";
+const pbox = document.createElement("div");
+pbox.id = "pieces";
+pc.appendChild(pt);
+pc.appendChild(pbox);
+document.getElementById("settings").appendChild(pc);
 
 let saved = "Green";
 try { saved = localStorage.getItem("theme") || "Green"; } catch (e) {}
 if (!themes[saved]) saved = "Green";
 setTheme(saved);
+drawPieceSets();
 draw();
+
+const extra = document.createElement("script");
+extra.src = "arrows.js";
+document.body.appendChild(extra);
